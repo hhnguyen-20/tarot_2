@@ -1,4 +1,6 @@
-let deck = Array.from({ length: 78 }, (_, i) => i + 1);
+const baseURL = "images/";
+
+let deck = Array.from({ length: 78 }, (_, i) => i);
 let selectedCards = [];
 let shuffleInterval;
 
@@ -6,23 +8,22 @@ function shuffleCards() {
     if (shuffleInterval) {
         clearInterval(shuffleInterval);
         shuffleInterval = null;
-        document.getElementById('shuffleButton').textContent = 'Start Shuffling';
+        document.querySelector('button[onclick="shuffleCards()"]').textContent = 'Start Shuffling';
     } else {
         shuffleArray(deck); // Shuffle the deck
         shuffleAndRenderDeck(); // Visually shuffle the cards on the page
-        document.getElementById('shuffleButton').textContent = 'Stop Shuffling';
-
+        document.querySelector('button[onclick="shuffleCards()"]').textContent = 'Stop Shuffling';
         shuffleInterval = setInterval(() => {
             shuffleArray(deck);
             shuffleAndRenderDeck();
         }, 1000);
     }
 }
-// Fisher-Yates shuffle algorithm
+
 function shuffleArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]]; // swap elements
+        [array[i], array[j]] = [array[j], array[i]];
     }
 }
 
@@ -37,16 +38,20 @@ function renderDeck() {
         const frontImg = document.createElement('img');
         frontImg.className = 'front_side';
         frontImg.src = baseURL + cardNum + ".jpg";
+        frontImg.alt = "Tarot Card " + cardNum;
+
 
         const backImg = document.createElement('img');
         backImg.className = 'back_side';
-        backImg.src = "{{ url_for('static', filename='images/78.jpg') }}";
+        backImg.src = baseURL + "78.jpg";
 
         cardDiv.appendChild(frontImg);
         cardDiv.appendChild(backImg);
         container.appendChild(cardDiv);
     }
 }
+
+
 
 function shuffleAndRenderDeck() {
     const cards = Array.from(document.querySelectorAll('.card'));
@@ -73,9 +78,11 @@ function shuffleAndRenderDeck() {
         // Force a reflow to make sure the transform takes effect before the transition
         void card.offsetWidth;
 
+        card.style.transition = 'transform 0.5s';  // Added this line
         card.style.transform = '';
     });
 }
+
 
 function goToResultPage() {
     if (selectedCards.length < 5) {
@@ -83,17 +90,14 @@ function goToResultPage() {
         return;
     }
 
-    document.querySelector('.card_container').innerHTML = '';
-
-    selectedCards.forEach(cardNum => {
-        const cardImg = document.createElement('img');
-        cardImg.src = `images/${cardNum}.jpg`;
-        document.querySelector('.card_container').appendChild(cardImg);
-    });
+    localStorage.setItem('selectedCards', JSON.stringify(selectedCards));
+    window.location = "result.html";  // Assumes result.html is in the same directory
 }
 
 
-let selectedCards = [];
+
+
+
 let maxSelectableCards = 5;
 
 function flipCard(card) {
@@ -102,6 +106,20 @@ function flipCard(card) {
         updateSelectedCards(card);
     }
 }
+
+function updateSelectedCards(card) {
+    const cardNumber = card.querySelector(".front_side").src.split('/').pop().split('.')[0];  // Extract card number from the image src
+    if (card.classList.contains("flipped")) {
+        selectedCards.push(cardNumber);
+    } else {
+        const cardIndex = selectedCards.indexOf(cardNumber);
+        if (cardIndex !== -1) {
+            selectedCards.splice(cardIndex, 1);
+        }
+    }
+    showSelectedCardsInfo();
+}
+
 
 function updateSelectedCards(card) {
     if (card.classList.contains("flipped")) {
@@ -116,59 +134,62 @@ function updateSelectedCards(card) {
 }
 
 function showSelectedCardsInfo() {
-    const selectedCardsInfo = document.getElementById("selected_cards_info");
-    const selectedCardsDetails = document.getElementById("selected_cards_details");
-    const toast = document.getElementById("toast");
-
-    selectedCardsDetails.innerHTML = "";
+    const infoDiv = document.getElementById('cardInfo');
+    infoDiv.innerHTML = "";
 
     if (selectedCards.length === maxSelectableCards) {
-        selectedCardsInfo.style.display = "block";
         for (const card of selectedCards) {
             const cardInfo = document.createElement("p");
             cardInfo.textContent = card;
-            selectedCardsDetails.appendChild(cardInfo);
+            infoDiv.appendChild(cardInfo);
         }
 
-        // Disable click event for all cards
         const cards = document.getElementsByClassName("card");
         for (const card of cards) {
             card.style.pointerEvents = "none";
         }
-
-        // Show the toast message
-        showToast(toast);
     } else {
-        selectedCardsInfo.style.display = "none";
+        infoDiv.innerHTML = ""; // Clear the info if less than max selectable cards
     }
 }
 
-function showToast(toast) {
-    toast.className = "toast show";
-    setTimeout(function () { toast.className = toast.className.replace("show", ""); }, 3000);
+
+// Use this function on page load to render the cards
+window.onload = renderDeck;
+
+
+document.addEventListener("DOMContentLoaded", function() {
+    if (window.location.pathname.endsWith("result.html")) {
+        loadResultPage();
+    } else if (window.location.pathname.endsWith("index.html")) {
+        renderDeck();
+    }
+});
+
+let currentCardIndex = 0;
+
+function loadResultPage() {
+    selectedCards = JSON.parse(localStorage.getItem('selectedCards') || "[]");
+    if (selectedCards.length === 0) {
+        alert("No cards selected. Redirecting...");
+        window.location = "index.html";
+    }
+    displayCard();
+
+    document.getElementById("nextButton").addEventListener("click", function() {
+        currentCardIndex++;
+        if (currentCardIndex >= selectedCards.length) {
+            alert("You've viewed all the cards!");
+            // Redirect to index.html or any other action
+            window.location = "index.html";
+            return;
+        }
+        displayCard();
+    });
 }
-// Before navigating to the result page
-function saveSelectedCardsToServer() {
-    fetch('/save-cards', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ cards: selectedCards })
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                window.location.href = "{{ url_for('result') }}";
-            } else {
-                alert("Error saving cards. Try again.");
-            }
-        });
+
+function displayCard() {
+    const imgElem = document.getElementById("resultImage");
+    const cardNumber = selectedCards[currentCardIndex].split(' ').pop(); // Extract card number from the image alt
+    imgElem.src = baseURL + cardNumber + ".jpg";
 }
-
-
-
-
-
-
-

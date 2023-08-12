@@ -1,34 +1,22 @@
-{% extends 'base.html' %}
+<!DOCTYPE html>
+<html lang="en">
 
-{% block body %}
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tarot Card Results</title>
+    <link rel="stylesheet" href="style.css">
+</head>
 
-<div class="single-card-container">
-    <img id="displayedCard" src="{{ url_for('static', filename='images/' + cards[0] + '.jpg') }}" alt="Tarot Card {{ cards[0] }}">
-    <button id="nextCard">Next Card</button>
-</div>
+<body>
+    <h1>Your Selected Tarot Card</h1>
+    <div class="single-card-container">
+        <img id="resultImage" src="" alt="Selected Tarot Card" style="max-width: 300px;">
+        <button id="nextButton">Next Card</button>
+    </div>
 
-{% if cards %}
-<script>
-    let selectedCards = {{ cards|tojson }};
-    let currentCardIndex = 0;
-    const endCardImage = "{{ url_for('static', filename='images/78.jpg') }}";
+    <script src="script.js"></script>
+</body>
 
-    function showCard(index) {
-        const displayedCard = document.getElementById('displayedCard');
-        displayedCard.src = "{{ url_for('static', filename='images/') }}" + selectedCards[index] + ".jpg";
-        displayedCard.alt = "Tarot Card " + selectedCards[index];
-    }
-
-    document.getElementById('nextCard').addEventListener('click', function() {
-        currentCardIndex++;
-        if (currentCardIndex >= selectedCards.length) {
-            displayedCard.src = endCardImage;
-            // currentCardIndex = 0;  // loop back to the first card if you reach the end
-        }
-        showCard(currentCardIndex);
-    });
-</script>
-{% endif %}
-
-
-{% endblock %}
+</html>
